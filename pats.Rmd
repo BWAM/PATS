@@ -1,0 +1,67 @@
+---
+title: "pats"
+author: "NYSDEC"
+date: "1/4/2024"
+output: html_document
+---
+
+1.
+Try using the function read_csv() from package readr to import the data into R. 
+Average replicates by event_id using the dplyr functions group_by and summarize. Use the base R function mean in summarize.
+
+
+```{r}
+library(readr)
+pats <- read_csv("patroons_macro_metrics.csv")
+
+library(dplyr)
+pats2 <- pats %>%
+  group_by(event_id) %>%
+  summarize(avg_replicate = mean(score_bioassessment_profile, na.rm = TRUE))
+
+
+
+
+```
+
+2.
+Add a new column using the dplyr function mutate with case_when() that categorizes the data into:
+ "above" , "within", "below" using river_mile. You probably need something like "above","within1", "within2", "below1", "below2". I think it would be reasonable to try lumping the odd 2021 sites with their closest counter part.
+"before" and "after" based on sample date.
+```{r}
+#Please replace lower_bound and upper_bound with the actual values that define your categories. Also, replace date_condition with the actual date that separates “before” and “after”.
+library(dplyr)
+
+pats2 <- pats %>%
+  group_by(event_id) %>%
+  summarize(avg_replicate = mean(score_bioassessment_profile, na.rm = TRUE)) %>%
+  mutate(
+    river_mile_category = case_when(
+      river_mile < lower_bound ~ "below1",
+      river_mile >= lower_bound & river_mile < upper_bound ~ "within1",
+      river_mile >= upper_bound & river_mile < upper_bound2 ~ "within2",
+      river_mile >= upper_bound2 & river_mile < lower_bound2 ~ "below2",
+      river_mile >= lower_bound2 ~ "above"
+    ),
+    sample_date_category = case_when(
+      sample_date < date_condition ~ "before",
+      sample_date >= date_condition ~ "after"
+    )
+  )
+
+```
+
+3. 
+use the tidyr function, pivot_wider, to get the site categories "above", "within", "below" to represent individual columns by date (rows).
+Use dplyr mutate to find the difference between sites. For example, mutate(above_below_diff = above - below).
+```{r}
+
+```
+
+4.
+Use ggpubr to plot the data: Plot Paired Data — ggpaired • ggpubr (datanovia.com)
+use the Wilcoxon Rank Sum test (wilcox.test()) to compare the two periods. If more than one difference is evaluated, use kruskal Wallis test and then, if kruskal wallis is significant, use post hoc wilcoxon test or dunns test.
+
+```{r}
+
+```
