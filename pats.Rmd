@@ -12,10 +12,14 @@ Average replicates by event_id using the dplyr functions group_by and summarize.
 
 ```{r}
 library(readr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
 pats <- read_csv("patroons_macro_metrics.csv", 
                  col_types = cols(
   event_id = col_character(),
-  river_mile = col_double(),
+  river_mile = col_character(),
   sample_date = col_date(format = ""),
   project = col_character(),
   biosample_collection_method = col_character(),
@@ -41,10 +45,127 @@ pats <- read_csv("patroons_macro_metrics.csv",
 )) %>%
   filter(sample_date>"2018-01-01")
 
-library(dplyr)
-pats_mean <- pats %>%
+pats_habitat <- read_csv("L:/DOW/BWAM Share/data/projects/patroons_daylighting/db_pull/S_HABITAT_SURVEY.csv",
+                       cols(
+  event_id = col_character(),
+  stream_gradient = col_character(),
+  sum_of_habitat_assessment_scores = col_double(),
+  habitat_model_affinity_score = col_double(),
+  habitat_model_affinity_category = col_character(),
+  epifaunal_cover = col_double(),
+  pool_substrate = col_logical(),
+  pool_variability = col_logical(),
+  sediment_deposition = col_double(),
+  flow_status = col_double(),
+  channel_alteration = col_double(),
+  channel_sinuosity = col_logical(),
+  left_bank_stability = col_double(),
+  right_bank_stability = col_double(),
+  left_bank_vegetative_protection = col_double(),
+  right_bank_vegetative_protection = col_double(),
+  left_bank_riparian_zone_width = col_double(),
+  right_bank_riparian_zone_width = col_double(),
+  habitat_comment = col_character(),
+  embeddedness = col_double(),
+  velocity_depth_regime = col_double(),
+  riffle_frequency = col_double()
+))
+
+pats_chem <- read_csv("L:/DOW/BWAM Share/data/projects/patroons_daylighting/db_pull/S_CHEM_RESULT.csv",
+                      cols(
+  sys_sample_code = col_character(),
+  pcode = col_double(),
+  casrn = col_character(),
+  sample_delivery_group = col_character(),
+  lab_analytical_method = col_character(),
+  analysis_datetime = col_datetime(format = ""),
+  test_type = col_character(),
+  dilution_factor = col_double(),
+  prep_method = col_character(),
+  prep_datetime = col_datetime(format = ""),
+  lab_sample_id = col_character(),
+  subsample_amount = col_double(),
+  subsample_amount_unit = col_character(),
+  final_volume = col_double(),
+  final_volume_unit = col_character(),
+  result_value = col_double(),
+  result_type_code = col_character(),
+  reportable_result = col_character(),
+  detect_flag = col_character(),
+  qualifier_source = col_character(),
+  lab_qualifier = col_character(),
+  result_qualifier = col_character(),
+  result_qualifier_note = col_character(),
+  method_detection_limit = col_double(),
+  reporting_detection_limit = col_double(),
+  quantitation_limit = col_double(),
+  detection_limit_unit = col_character(),
+  lab_validation_level = col_logical(),
+  result_comment = col_character()
+))
+
+pats_user_perception <- read_csv("L:/DOW/BWAM Share/data/projects/patroons_daylighting/db_pull/S_USER_PERCEPTION_SURVEY.csv",
+                                 cols(
+  event_id = col_character(),
+  primary_contact_recreation = col_character(),
+  secondary_contact_recreation = col_character(),
+  current_weather = col_character(),
+  past_weather = col_character(),
+  water_clarity = col_double(),
+  suspended_phytoplankton = col_double(),
+  periphyton = col_double(),
+  macrophyte = col_double(),
+  odor = col_double(),
+  trash = col_double(),
+  discharge_pipe = col_double(),
+  primary_variable = col_character(),
+  secondary_variable = col_character(),
+  user_perception_comment = col_character()
+))
+
+ pats_macros <- read_csv("L:/DOW/BWAM Share/data/projects/patroons_daylighting/db_pull/S_MACRO_METRICS.csv")
+#                         cols(
+#   event_id = col_character(),
+#   collection_method = col_character(),
+#   replicate = col_double(),
+#   group = col_character(),
+#   score_bap = col_double(),
+#   raw_richness = col_double(),
+#   score_richness = col_double(),
+#   raw_ept_richness = col_double(),
+#   score_ept_richness = col_double(),
+#   raw_hilsenhoff_biotic_index = col_double(),
+#   score_hilsenhoff_biotic_index = col_double(),
+#   raw_shannon_diversity = col_logical(),
+#   score_shannon_diversity = col_logical(),
+#   raw_percent_model_affinity = col_double(),
+#   score_percent_model_affinity = col_double(),
+#   raw_nutrient_biotic_index_phosphorus = col_double(),
+#   score_nutrient_biotic_index_phosphorus = col_double(),
+#   raw_non_chiro_oligo_richness = col_logical(),
+#   score_non_chiro_oligo_richness = col_logical(),
+#   raw_percent_dominance_3 = col_logical(),
+#   score_percent_dominance_3 = col_logical()
+# ))
+
+
+# Use str_extract to get the desired part of the string
+pats_macros$river_mile <- str_extract(pats_macros$event_id, "(?<=13-PATS-)\\d+\\.\\d+")
+
+# Convert the new column to numeric
+pats_macros$river_mile <- as.numeric(pats_macros$river_mile)
+# Extract the last 8 characters from the event_id column
+pats_macros$sample_date <- substr(pats_macros$event_id, nchar(pats_macros$event_id)-7, nchar(pats_macros$event_id))
+
+# Convert the new column to a date
+pats_macros$sample_date <- as.Date(pats_macros$sample_date, format = "%Y%m%d")
+
+
+pats_median <- pats_macros %>%
   group_by(event_id, river_mile, sample_date) %>%
-  summarize(avg_replicate = mean(score_bioassessment_profile, na.rm = TRUE)) %>% 
+  summarize(bap_median = median(score_bioassessment_profile, na.rm = TRUE), 
+            bap_mad = mad(score_bioassessment_profile, na.rm = TRUE), 
+            .groups = "drop") %>% 
   ungroup() 
 
 
@@ -57,10 +178,8 @@ Add a new column using the dplyr function mutate with case_when() that categoriz
  "above" , "within", "below" using river_mile. You probably need something like "above","within1", "within2", "below1", "below2". I think it would be reasonable to try lumping the odd 2021 sites with their closest counter part.
 "before" and "after" based on sample date.
 ```{r}
-#Please replace lower_bound and upper_bound with the actual values that define your categories. Also, replace date_condition with the actual date that separates “before” and “after”.
-library(dplyr)
 
-pats_cat <- pats_mean%>%
+pats_cat <- pats_median%>%
   mutate(
     river_mile_category = case_when(
       river_mile == 0.5 ~ "below1",
@@ -74,7 +193,9 @@ pats_cat <- pats_mean%>%
       sample_date < "2019-01-01" ~ "before",
       sample_date >= "2019-01-01" ~ "after",
       TRUE~"ERROR"
-    )
+    ), 
+    period = format(sample_date, "%B %Y"),
+      river_mile = factor(river_mile, levels = c("1.8", "1.7", "1.5", "1.3", "0.5"))
   )
 
 ```
@@ -83,12 +204,13 @@ pats_cat <- pats_mean%>%
 use the tidyr function, pivot_wider, to get the site categories "above", "within", "below" to represent individual columns by date (rows).
 Use dplyr mutate to find the difference between sites. For example, mutate(above_below_diff = above - below).
 ```{r}
-library(tidyr)
+
 pats_wide <- pats_cat %>% 
-  select(-event_id, -river_mile) %>% 
+  select(-event_id, -river_mile, -sample_date) %>% 
   pivot_wider(
-    names_from = river_mile_category, values_from = avg_replicate
-  )
+    names_from = river_mile_category, values_from = bap_median
+  ) %>% 
+  mutate(diff_above_below1 = above - below1)
 
 #check for difference between above and below in the two time periods 
 #above-below before and after
@@ -99,5 +221,21 @@ Use ggpubr to plot the data: Plot Paired Data — ggpaired • ggpubr (datanovia
 use the Wilcoxon Rank Sum test (wilcox.test()) to compare the two periods. If more than one difference is evaluated, use kruskal Wallis test and then, if kruskal wallis is significant, use post hoc wilcoxon test or dunns test.
 
 ```{r}
+library(ggplot2)
+(bap_change <- ggplot(pats_cat, aes(x = sample_date, 
+                     y = bap_median, 
+                     color = river_mile 
+                     )) +
+  geom_line() + 
+  geom_errorbar(aes(ymin= bap_median - bap_mad, ymax=bap_median + bap_mad), 
+                width = 150, 
+                position=position_dodge(0.05)) +
+  geom_point() +
+    facet_wrap(~river_mile) +
+    theme_bw()
+  )
+
+ggsave("pats_4.pdf", plot = bap_change, width = 5, height = 5, units = "in")
+
 
 ```
